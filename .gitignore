@@ -1,3 +1,7 @@
 *.nc
 *.ps
+fig.md
+figs/
+genmd.py
+ls3mip-elm/
 
