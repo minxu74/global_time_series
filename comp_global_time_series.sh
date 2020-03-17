@@ -257,6 +257,18 @@ for path in `ls $realpath`; do
     model=$path
     for var in "${chkvars[@]}"; do
         echo $var
+
+
+	if [[ $itype != 'mip' ]]; then
+           if [[ $model != $modnam ]]; then
+	      echo "continue"
+	      continue
+	   fi
+	fi
+
+
+	   
+
     	xfil=(`ls $realpath/$model/${var}_*`)
     
     	if [ "${#xfil[@]}" -gt 1 ]; then
@@ -440,7 +452,7 @@ for path in `ls $realpath`; do
     
                #ncra -O --mro -d time,,,12,12 tmp1_$var.nc -o tmp_$var.nc
     	       nces -h -O ${filelist[*]} -o tmp_$var.nc
-    	       ncap2 -O -v -s "${method}_${var}=${method}_${var}*12./365.*$asca+$afac" tmp_$var.nc GBL_${method}_$name
+    	       ncap2 -O -v -s "${method}_${var}=${method}_${var}*12./365.*$asca+$afac" tmp_$var.nc GBL_${method}_${modnam}_${name}
     	       /bin/rm -f tmp*_tmp1_$var.nc
            elif [[ ${method:3:2} == "as" ]]; then
     	       #annual mean
@@ -459,7 +471,7 @@ for path in `ls $realpath`; do
     	       #-/bin/rm -f tmp*_tmp1_$var.nc
                    #-ncra -O --mro -d time,,,12,12 tmp1_$var.nc -o tmp_$var.nc
     	       nces -h -O ${filelist[*]} -o tmp_$var.nc
-               ncap2 -O -v -s "${method}_${var}=${method}_${var}*12*$asca+$afac" tmp_$var.nc GBL_${method}_$name
+               ncap2 -O -v -s "${method}_${var}=${method}_${var}*12*$asca+$afac" tmp_$var.nc GBL_${method}_${modnam}_${name}
     	       /bin/rm -f tmp*_tmp1_$var.nc
     	   else
     	       echo "Invalid method for annual operation $method"; exit -1;

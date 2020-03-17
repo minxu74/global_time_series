@@ -29,6 +29,18 @@ module load nco
 #       -m gs2as --Gscale=11.070666624109093 --Ascale=86400.0 --modnam=E3SM_1PCTCO2 --caseid=20191123.CO21PCTFUL_RUBISCO_CNPCTC20TR_OIBGC.I1900.ne30_oECv3.compy.cam \
 #       --strtyr=1900 --stopyr=2049 --itype=raw
 
-./comp_global_time_series.sh -b /global/cfs/cdirs/m3522/1pctco2_temp/20191123.CO21PCTFUL_RUBISCO_CNPCTC20TR_OIBGC.I1900.ne30_oECv3.compy/run -v NEE \
-       -m gs1as --Gscale=1. --Ascale=86400.0 --modnam=E3SM_1PCTCO2 --caseid=20191123.CO21PCTFUL_RUBISCO_CNPCTC20TR_OIBGC.I1900.ne30_oECv3.compy.clm2 \
+#./comp_global_time_series.sh -b /global/cfs/cdirs/m3522/1pctco2_temp/20191123.CO21PCTFUL_RUBISCO_CNPCTC20TR_OIBGC.I1900.ne30_oECv3.compy/run -v NEE \
+#       -m gs1as --Gscale=1.e-9 --Ascale=86400.0 --modnam=E3SM_1PCTCO2 --caseid=20191123.CO21PCTFUL_RUBISCO_CNPCTC20TR_OIBGC.I1900.ne30_oECv3.compy.clm2 \
+#       --strtyr=1900 --stopyr=2049 --itype=raw
+
+./comp_global_time_series.sh -b /global/cfs/cdirs/m3522/1pctco2_temp/20191123.CO21PCTFUL_RUBISCO_CNPCTC20TR_OIBGC.I1900.ne30_oECv3.compy/run -v NBP \
+       -m gs1as --Gscale=1.e-9 --Ascale=86400.0 --modnam=E3SM_1PCTCO2FUL --caseid=20191123.CO21PCTFUL_RUBISCO_CNPCTC20TR_OIBGC.I1900.ne30_oECv3.compy.clm2 \
        --strtyr=1900 --stopyr=2049 --itype=raw
+#
+#./comp_global_time_series.sh -b /global/cfs/cdirs/m3522/1pctco2_temp/20191020.CO21PCTCTL_RUBISCO_CNPCTC1850_OIBGC.ne30_oECv3.compy/run -v NBP \
+#       -m gs1as --Gscale=1.e-9 --Ascale=86400.0 --modnam=E3SM_1PCTCO2CTL --caseid=20191020.CO21PCTCTL_RUBISCO_CNPCTC1850_OIBGC.ne30_oECv3.compy.clm2 \
+#       --strtyr=1900 --stopyr=2049 --itype=raw
+#
+#./comp_global_time_series.sh -b /global/cfs/projectdirs/m3522/cmip6/1pctCO2-E3SM/20191020.CO21PCTBGC_RUBISCO_CNPCTC20TR_OIBGC.ne30_oECv3.compy/run -v NBP \
+#       -m gs1as --Gscale=1.e-9 --Ascale=86400.0 --modnam=E3SM_1PCTCO2 --caseid=20191020.CO21PCTBGC_RUBISCO_CNPCTC20TR_OIBGC.ne30_oECv3.compy.clm2 \
+#       --strtyr=1850 --stopyr=2000 --itype=raw

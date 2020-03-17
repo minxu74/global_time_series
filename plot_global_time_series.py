@@ -28,7 +28,8 @@ for file in sys.argv[1:]:
    temp = file.split('_')
 
    #varn = temp[1]+'_'+temp[2][:-3]
-   varn = '_'.join(temp[1:-1]) + '_'+temp[-1][:-3]
+   #varn = '_'.join(temp[1:-1]) + '_'+temp[-1][:-3]
+   varn = '_'.join(temp[1:2]) + '_'+temp[-1][:-3]
    #models.append(temp[3])
 
 
