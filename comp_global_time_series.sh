@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
 
-set -x
+#ATTN: caseid should include the componenet names
 module load nco
 
 
 #default
 chkvars=(cLitter cSoilFast cSoilMedium cSoilSlow)
 chkvars=(cLitter)
-basepath=/global/cscratch1/sd/minxu/CMIP6_ILAMB/LS3MIP_MODEL/
+#basepath=/global/cscratch1/sd/minxu/CMIP6_ILAMB/LS3MIP_MODEL/
 #basepath=/global/project/projectdirs/acme/xyk/CBGC_outputs/CTC/BDRD/
+basepath=/global/cscratch1/sd/cmip6/1pctCO2-E3SM/20191017.RUBISCO_CO21PCT_CNPCTC20TR_OIBGC.ne30_oECv3.compy/run/
 
 itype="mip"
 
@@ -18,8 +19,8 @@ dpm=(31 28 31 30 31 30 31 31 30 31 30 31)
 gsca=1.0; asca=1.0
 gfac=0.0; afac=0.0
 
-OPTIONS=hv:m:u:t:
-LNGOPTS=help,variable:,method:,Gscale:,Ascale:,Gfactor:,Afactor:,units:,itype:,modnam:,caseid:,strtyr:,stopyr:,wgtsum:,wgtavg:
+OPTIONS=hv:m:u:t:b:
+LNGOPTS=help,basepath:,variable:,method:,Gscale:,Ascale:,Gfactor:,Afactor:,units:,itype:,modnam:,caseid:,strtyr:,stopyr:,wgtsum:,wgtavg:
 
 ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LNGOPTS --name "$0" -- "$@")
 
@@ -35,9 +36,13 @@ eval set -- "$PARSED"
 while true; do
     case "$1" in
         -h|--help)
-            echo "`basename $0` -h[--help] -v[--variable] -m[--method] [--Gsacle] [--Ascale] [--Gfactor] [--Afactor] -u[--units] -t[--itype]"
+            echo "`basename $0` -h[--help] -b[--basepath] -v[--variable] -m[--method] [--Gsacle] [--Ascale] [--Gfactor] [--Afactor] -u[--units] -t[--itype]"
             shift 1
 	    exit
+            ;;
+        -b|--basepath)
+            basepath="$2"
+            shift 2
             ;;
         -v|--variable)
             varinp="$2"
@@ -151,7 +156,8 @@ nvrs=${#chkvars[@]}
 if [[ $itype == 'mip' ]]; then
    realpath=$basepath
 else
-   echo "will implement later"
+   echo "aggreate data ......"
+
    realpath='./temp4model'
 
 
@@ -165,24 +171,87 @@ else
 
    year_align=0
    ncfiles=''
+
+
+
+   #historical file tempates
+   # mpascice.hist.am.timeSeriesStatsMonthly.1881-05-01.nc
+   # 20191017.RUBISCO_CO21PCT_CNPCTC20TR_OIBGC.ne30_oECv3.compy.cam.h0.1852-03.nc 
+
    for iy in `seq $((strtyr+year_align)) $((stopyr+year_align))`; do
        cy=`printf "%04d" $iy`
-       ncfiles="$ncfiles "`/bin/ls ${basepath}/${caseid}*.h0.${cy}*.nc`
+
+       if [[ $caseid == "mpas"* ]]; then
+          ncfiles="$ncfiles "`/bin/ls ${basepath}/${caseid}.${cy}*.nc`
+       else
+          ncfiles="$ncfiles "`/bin/ls ${basepath}/${caseid}.h0.${cy}*.nc`
+       fi
 
        if [[ $iy == $((strtyr+year_align)) ]]; then
-           firstfl=`/bin/ls ${basepath}/${caseid}*.h0.${cy}-01.nc`
+
+	   if [[ $caseid == "mpas"* ]]; then
+	      # mpaso.rst.1974-01-01_00000.nc
+              firstfl=`/bin/ls ${basepath}/mpaso.rst.${cy}-01-01_00000.nc`
+           else
+              firstfl=`/bin/ls ${basepath}/${caseid}.h0.${cy}-01*.nc`
+	   fi
        fi
    done
    
    #ncclimo 
-   #-/bin/ls $ncfiles | ncclimo --var=${varinp},landfrac,area --job_nbr=$nvrs --yr_srt=$strtyr --yr_end=$stopyr --ypf=500 \
-   #-     --drc_out=${realpath}/${modnam} > ./ncclimo.lnd 2>&1
 
-   #get the landfrac and area
-   ncks -h -O -v landfrac,area ${firstfl} -o ${realpath}/${modnam}/landfrac_area.nc
+
+   if  [[ $caseid == "mpas"* ]]; then
+       /bin/ls $ncfiles | ncclimo --var=${varinp},timeMonthly_avg_daysSinceStartOfSim --job_nbr=$nvrs --yr_srt=$strtyr --yr_end=$stopyr --ypf=500 \
+            --drc_out=${realpath}/${modnam} > ./ncclimo.lnd 2>&1
+       ncrename -h -v timeMonthly_avg_daysSinceStartOfSim,Time ${realpath}/${modnam}/timeMonthly_avg_daysSinceStartOfSim_${strtyr}01_${stopyr}12.nc
+       ncks -A -h ${realpath}/${modnam}/timeMonthly_avg_daysSinceStartOfSim_${strtyr}01_${stopyr}12.nc ${realpath}/${modnam}/${varinp}_${strtyr}01_${stopyr}12.nc
+       ncrename -h -v Time,time ${realpath}/${modnam}/${varinp}_${strtyr}01_${stopyr}12.nc
+       ncrename -h -d Time,time ${realpath}/${modnam}/${varinp}_${strtyr}01_${stopyr}12.nc
+       ncatted -O -a units,time,o,c,"days since 1850-01-01 00:00:00" ${realpath}/${modnam}/${varinp}_${strtyr}01_${stopyr}12.nc
+       ncatted -O -a calendar,time,o,c,"noleap" ${realpath}/${modnam}/${varinp}_${strtyr}01_${stopyr}12.nc
+       echo 'bbb'
+   else
+       /bin/ls $ncfiles | ncclimo --var=${varinp} --job_nbr=$nvrs --yr_srt=$strtyr --yr_end=$stopyr --ypf=500 \
+            --drc_out=${realpath}/${modnam} > ./ncclimo.lnd 2>&1
+       echo 'aaa'
+   fi
+
+   #get the landfrac and area whatever cam or clm2
+
+   #cam
+   if  [[ $caseid == *"cam"* ]]; then
+
+       if [[ $varinp == "SFCO2_OCN" ]]; then
+          ncks -h -O -v OCNFRAC,area ${firstfl} -o temp_frac.nc
+	  ncwa -O -h -a time temp_frac.nc ${realpath}/${modnam}/landfrac_area.nc
+          #ncks -h -O -v OCNFRAC,area ${firstfl} -o ${realpath}/${modnam}/landfrac_area.nc
+	  ncrename -h -O -v OCNFRAC,landfrac ${realpath}/${modnam}/landfrac_area.nc
+	  /bin/rm -f temp_frac.nc
+       else
+          ncks -h -O -v LANDFRAC,area ${firstfl} -o temp_frac.nc
+	  ncwa -O -h -a time temp_frac.nc ${realpath}/${modnam}/landfrac_area.nc
+	  ncrename -h -O -v LANDFRAC,landfrac ${realpath}/${modnam}/landfrac_area.nc
+	  /bin/rm -f temp_frac.nc
+       fi
+   fi
+
+   #clm
+   if  [[ $caseid == *"clm2"* ]]; then
+       ncks -h -O -v landfrac,area ${firstfl} -o ${realpath}/${modnam}/landfrac_area.nc
+   fi
+
+   #mpas
+   if  [[ $caseid == "mpas"* ]]; then
+
+       #ncks -h -O -v areaCell ${firstfl} -o temp_area.nc
+       #ncwa -O -h -a Time temp_area.nc ${realpath}/${modnam}/landfrac_area.nc
+       ncks -h -O -v areaCell ${firstfl} -o ${realpath}/${modnam}/landfrac_area.nc
+       ncrename -O -h -v areaCell,area ${realpath}/${modnam}/landfrac_area.nc
+       #/bin/rm -f temp_area.nc
+   fi
 
 fi
-
 
 for path in `ls $realpath`; do
     model=$path
@@ -198,6 +267,7 @@ for path in `ls $realpath`; do
         elif [ "${#xfil[@]}" -eq 1 ]; then
            temp=`basename ${xfil[0]}`
            file=${temp::-17}.nc
+           `pwd`
     	   /bin/cp -f ${xfil[0]} $file
     	else
            echo "cannot find the file for variable $var"
@@ -253,11 +323,16 @@ for path in `ls $realpath`; do
     	      ncwa -a lat,lon $file tmp_$var.nc  # global average
            fi
 
-        else
+        else  # raw model outputs
            #should be contained
 
            /bin/mv -f $file tmp_$var.nc
-           ncks -h -A ${realpath}/${modnam}/landfrac_area.nc -o tmp_$var.nc
+
+           if  [[ $caseid == "mpas"* ]]; then
+              ncks -h -v area -A ${realpath}/${modnam}/landfrac_area.nc -o tmp_$var.nc
+	   else
+              ncks -h -v landfrac,area -A ${realpath}/${modnam}/landfrac_area.nc -o tmp_$var.nc
+	   fi
 
            dmnlst=`ncdmnlst tmp_$var.nc`
 
@@ -265,51 +340,94 @@ for path in `ls $realpath`; do
 
               wgtsum=${method:2:1}
               if [[ $dmnlst == *"lat"* ]]; then
-                  if [[ $wgtsum == 1 ]]; then
+                  if [[ $wgtsum == 1 ]]; then  # land area sum
                       ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($lat).sum($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
-                  elif [[ $wgtsum == 2 ]]; then
-                      echo "not implemented yet"
-                  else
+                  elif [[ $wgtsum == 2 ]]; then # grid area sum
+                      echo "all area"
+                      ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($lat).sum($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  else  # var sum
                       ncap2 -O -v -s "${method}_${var}=$var"'.sum($lat).sum($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   fi
-              else
+              elif [[ $dmnlst == *"lndgrid"* ]]; then
                   if [[ $wgtsum == 1 ]]; then
                       ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($lndgrid)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   elif [[ $wgtsum == 2 ]]; then
-                      echo "not implemented yet"
+                      echo "all area"
+                      ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($lndgrid)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   else
                       ncap2 -O -v -s "${method}_${var}=$var"'.sum($lndgrid)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   fi
-              fi
 
+              elif [[ $dmnlst == *"ncol"* ]]; then
+                  if [[ $wgtsum == 1 ]]; then
+		      ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($ncol)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtsum == 2 ]]; then
+                      echo "all area"
+                      ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($ncol)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  else
+                      ncap2 -O -v -s "${method}_${var}=$var"'.sum($ncol)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  fi
+              elif [[ $dmnlst == *"nCells"* ]]; then
+                  if [[ $wgtsum == 1 ]]; then
+                      ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($nCells)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtsum == 2 ]]; then
+                      echo "all area"
+                      ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($nCells)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  else
+                      ncap2 -O -v -s "${method}_${var}=$var"'.sum($nCells)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  fi
+              fi
+          
+           # Global average
            wgtavg=${method:2:1}
     	   elif [[ ${method:0:2} == "ga" ]]; then
+
               if [[ $dmnlst == *"lat"* ]]; then
-                  if [[ $wgtavg == 1 ]]; then
+                  if [[ $wgtavg == 1 ]]; then  # land area weighted averaged
                       ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($lat).sum($lon)/((landfrac*area).sum($lat).sum($lon))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
-                  elif [[ $wgtavg == 2 ]]; then
+                  elif [[ $wgtavg == 2 ]]; then  # land area weighted averaged
+                      ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($lat).sum($lon)/((area).sum($lat).sum($lon))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtavg == 3 ]]; then # land area sum averaged
                       ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).avg($lat).avg($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
-                  else
+                  else # var averaged
                       ncap2 -O -v -s "${method}_${var}=$var"'.avg($lat).avg($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   fi
-              else
+              elif [[ $dmnlst == *"lndgrid"* ]]; then
                   if [[ $wgtavg == 1 ]]; then
                      ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($lndgrid)/((landfrac*area).sum($lndgrid))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   elif [[ $wgtavg == 2 ]]; then
+                     ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($lndgrid)/((area).sum($lndgrid))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtavg == 3 ]]; then
                      ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).avg($lndgrid)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   else
                      ncap2 -O -v -s "${method}_${var}=$var"'.avg($lndgrid)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   fi
-
+              elif [[ $dmnlst == *"ncol"* ]]; then
+                  if [[ $wgtavg == 1 ]]; then
+                     ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($ncol)/((landfrac*area).sum($ncol))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtavg == 2 ]]; then
+                     ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($ncol)/((area).sum($ncol))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtavg == 3 ]]; then  # land area 
+                     ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).avg($ncol)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  else
+                     ncap2 -O -v -s "${method}_${var}=$var"'.avg($ncol)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  fi
+              elif [[ $dmnlst == *"nCells"* ]]; then
+                  if [[ $wgtavg == 1 ]]; then
+                     ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).sum($nCells)/((landfrac*area).sum($nCells))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtavg == 2 ]]; then
+                     ncap2 -O -v -s "${method}_${var}=($var*"'area).sum($nCells)/((area).sum($nCells))*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  elif [[ $wgtavg == 3 ]]; then  # land area 
+                     ncap2 -O -v -s "${method}_${var}=($var*"'landfrac*area).avg($nCells)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  else
+                     ncap2 -O -v -s "${method}_${var}=$var"'.avg($nCells)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                  fi
               fi
     	   else
     	       echo "Invalid method for global operation $method"; exit -1;
     	   fi
 
-        fi
-
-        # annual operations
-    
+            # annual operations
     	   if [[ ${method:3:2} == "aa" ]]; then
     	       #annual mean
                    #ncra -O --mro -d time,,,12,12 -w 31,28,31,30,31,30,31,31,30,31,30,31 tmp1_$var.nc -o tmp_$var.nc
@@ -318,13 +436,13 @@ for path in `ls $realpath`; do
     	       for im in `seq 0 11`; do
     	           ncflint --fix_rec_crd -h -O -d time,$im,,12 -w ${dpm[$im]},0.0 tmp1_$var.nc tmp1_$var.nc -o tmp${im}_tmp1_$var.nc
     	           filelist+=(tmp${im}_tmp1_$var.nc)
-                   done
+               done
     
-                   #ncra -O --mro -d time,,,12,12 tmp1_$var.nc -o tmp_$var.nc
+               #ncra -O --mro -d time,,,12,12 tmp1_$var.nc -o tmp_$var.nc
     	       nces -h -O ${filelist[*]} -o tmp_$var.nc
     	       ncap2 -O -v -s "${method}_${var}=${method}_${var}*12./365.*$asca+$afac" tmp_$var.nc GBL_${method}_$name
     	       /bin/rm -f tmp*_tmp1_$var.nc
-               elif [[ ${method:3:2} == "as" ]]; then
+           elif [[ ${method:3:2} == "as" ]]; then
     	       #annual mean
                    #ncra -O --mro -d time,,,12,12 -w 31,28,31,30,31,30,31,31,30,31,30,31 tmp1_$var.nc -o tmp_$var.nc
     
@@ -332,7 +450,7 @@ for path in `ls $realpath`; do
     	       for im in `seq 0 11`; do
     	           ncflint --fix_rec_crd -h -O -d time,$im,,12 -w ${dpm[$im]},0.0 tmp1_$var.nc tmp1_$var.nc -o tmp${im}_tmp1_$var.nc
     	           filelist+=(tmp${im}_tmp1_$var.nc)
-                   done
+               done
     
     	       # filelist contains multi-year files with different month, so the time record should be always same and it should be safe to use nces
     
@@ -341,21 +459,21 @@ for path in `ls $realpath`; do
     	       #-/bin/rm -f tmp*_tmp1_$var.nc
                    #-ncra -O --mro -d time,,,12,12 tmp1_$var.nc -o tmp_$var.nc
     	       nces -h -O ${filelist[*]} -o tmp_$var.nc
-                   ncap2 -O -v -s "${method}_${var}=${method}_${var}*12*$asca+$afac" tmp_$var.nc GBL_${method}_$name
+               ncap2 -O -v -s "${method}_${var}=${method}_${var}*12*$asca+$afac" tmp_$var.nc GBL_${method}_$name
     	       /bin/rm -f tmp*_tmp1_$var.nc
     	   else
     	       echo "Invalid method for annual operation $method"; exit -1;
     	   fi
-    
     	   /bin/rm -f tmp_$var.nc tmp1_$var.nc
+        fi
     done
 done
 
 
+exit
 # now ploting figures:
 module rm python
 module load python3/3.7-anaconda-2019.07
 for var in "${chkvars[@]}"; do
     python plot_global_time_series.py *${method}_$var*.nc 
 done
-

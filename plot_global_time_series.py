@@ -19,9 +19,7 @@ else:
    print (len(sys.argv))
 
 
-fig = plt.figure()
-ax = fig.add_axes([0.1, 0.1, 0.85, 0.85])
-
+f, axarr = plt.subplots(2, sharex=True)
 
 models=[]
 for file in sys.argv[1:]:
@@ -29,8 +27,9 @@ for file in sys.argv[1:]:
 
    temp = file.split('_')
 
-   varn = temp[1]+'_'+temp[2]
-   models.append(temp[3])
+   #varn = temp[1]+'_'+temp[2][:-3]
+   varn = '_'.join(temp[1:-1]) + '_'+temp[-1][:-3]
+   #models.append(temp[3])
 
 
    with nc4.Dataset(file, "r") as fnc:
@@ -40,17 +39,24 @@ for file in sys.argv[1:]:
         #-print (fildate)
 
         #-print (type(fildate))
-        mpldate = mpl.dates.date2num(fildate[0::12])
-        varvals = fnc.variables[varn][0::12]
+        mpldate = mpl.dates.date2num(fildate[:])
 
+        varvals = fnc.variables[varn][:]
         #ploting
-        ax.plot_date(mpldate, varvals, '-', label=temp[4], linewidth=2.)
-        ax.legend(bbox_to_anchor=(0.3, 0.9), loc='upper left', borderaxespad=0.)
+        axarr[0].plot_date(mpldate, varvals, '-', label='E3SM', linewidth=2.)
+        axarr[0].legend(bbox_to_anchor=(0.3, 0.9), loc='upper left', borderaxespad=0.)
 
 
-ax.set(xlabel='time (Yr)', ylabel=temp[2], 
-        title='_'.join(temp[0:4]))
-plt.savefig("fig_" + "_".join(temp[0:3]) + ".ps")
+        varvals = np.cumsum(fnc.variables[varn][:])
+        #ploting
+        axarr[1].plot_date(mpldate, varvals, '-', label='E3SM', linewidth=2.)
+        axarr[1].legend(bbox_to_anchor=(0.3, 0.9), loc='upper left', borderaxespad=0.)
+
+
+
+axarr[0].set(xlabel='time (Yr)', ylabel=temp[2], 
+        title='_'.join(temp[0:])+"units: PgC")
+plt.savefig("fig_" + "_".join(temp[0:]) + ".ps")
 
 
 
