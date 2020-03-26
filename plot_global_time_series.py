@@ -25,11 +25,15 @@ models=[]
 for file in sys.argv[1:]:
    print (file.split('_'))
 
+
    temp = file.split('_')
 
    #varn = temp[1]+'_'+temp[2][:-3]
    #varn = '_'.join(temp[1:-1]) + '_'+temp[-1][:-3]
-   varn = '_'.join(temp[1:2]) + '_'+temp[-1][:-3]
+   #varn = '_'.join(temp[1:2]) + '_'+temp[-1][:-3]
+   varn = temp[1]+'_'+temp[3]
+   print (varn)
+   sys.exit()
    #models.append(temp[3])
 
 
@@ -40,17 +44,23 @@ for file in sys.argv[1:]:
         #-print (fildate)
 
         #-print (type(fildate))
-        mpldate = mpl.dates.date2num(fildate[:])
 
+        mpldate = []
+        for fd in fildate:
+            mpldate.append(mpl.dates.date2num(fd))
+
+        #varvals = fnc.variables[varn][:]
+        varn = "gs2as_timeMonthly_avg_CO2_gas_flux"
         varvals = fnc.variables[varn][:]
+
         #ploting
-        axarr[0].plot_date(mpldate, varvals, '-', label='E3SM', linewidth=2.)
-        axarr[0].legend(bbox_to_anchor=(0.3, 0.9), loc='upper left', borderaxespad=0.)
+        axarr[0].plot_date(mpldate, varvals, '-', label='', linewidth=2.)
+        #axarr[0].legend(bbox_to_anchor=(0.3, 0.9), loc='upper left', borderaxespad=0.)
 
 
         varvals = np.cumsum(fnc.variables[varn][:])
         #ploting
-        axarr[1].plot_date(mpldate, varvals, '-', label='E3SM', linewidth=2.)
+        axarr[1].plot_date(mpldate, varvals, '-', label=temp[3], linewidth=2.)
         axarr[1].legend(bbox_to_anchor=(0.3, 0.9), loc='upper left', borderaxespad=0.)
 
 

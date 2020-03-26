@@ -294,9 +294,20 @@ for path in `ls $realpath`; do
         if [[ $itype == 'mip' ]]; then
            # get land frac and areacella
      
-           file_landfrac=`ls $realpath/$model/sftlf*.nc`
-           file_areacell=`ls $realpath/$model/areacella*.nc`
+	   if [[ $name == *'Lmon'* ]]; then
+              file_landfrac=`ls $realpath/$model/sftlf*.nc`
+              file_areacell=`ls $realpath/$model/areacella*.nc`
+
+	      compfrac=sftlf
     
+	   elif [[ $name == *"Omon"* ]]; then
+              file_landfrac=`ls $realpath/$model/sftof*.nc`
+              file_areacell=`ls $realpath/$model/areacella*.nc`
+	      compfrac=sftof
+	   else
+	      echo "error !!!!!"
+
+	   fi
     
            echo $file_landfrac
            echo $file_areacell
@@ -313,9 +324,9 @@ for path in `ls $realpath`; do
     	      if [[ ${method:0:2} == "gs" ]]; then
                   wgtsum=${method:2:1}
                   if [[ $wgtsum == 1 ]]; then
-                      ncap2 -O -v -s "${method}_${var}=($var*"'sftlf*areacella).sum($lat).sum($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
+                      ncap2 -O -v -s "${method}_${var}=($var*${compfrac}"'*0.01*areacella).sum($lat).sum($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   elif [[ $wgtsum == 2 ]]; then
-                      echo "not implemented yet"
+                      ncap2 -O -v -s "${method}_${var}=($var*"'areacella).sum($lat).sum($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   else
                       ncap2 -O -v -s "${method}_${var}=$var"'.sum($lat).sum($lon)*'"$gsca+$gfac" tmp_$var.nc -o tmp1_$var.nc
                   fi
@@ -334,6 +345,47 @@ for path in `ls $realpath`; do
            else
     	      ncwa -a lat,lon $file tmp_$var.nc  # global average
            fi
+
+	   # temporal integration
+
+            # annual operations
+           if [[ ${method:3:2} == "aa" ]]; then
+               #annual mean
+                   #ncra -O --mro -d time,,,12,12 -w 31,28,31,30,31,30,31,31,30,31,30,31 tmp1_$var.nc -o tmp_$var.nc
+
+               filelist=()
+               for im in `seq 0 11`; do
+                   ncflint --fix_rec_crd -h -O -d time,$im,,12 -w ${dpm[$im]},0.0 tmp1_$var.nc tmp1_$var.nc -o tmp${im}_tmp1_$var.nc
+                   filelist+=(tmp${im}_tmp1_$var.nc)
+               done
+
+               #ncra -O --mro -d time,,,12,12 tmp1_$var.nc -o tmp_$var.nc
+               nces -h -O ${filelist[*]} -o tmp_$var.nc
+               ncap2 -O -v -s "${method}_${var}=${method}_${var}*12./365.*$asca+$afac" tmp_$var.nc GBL_${method}_${modnam}_${name}
+               /bin/rm -f tmp*_tmp1_$var.nc
+           elif [[ ${method:3:2} == "as" ]]; then
+               #annual mean
+                   #ncra -O --mro -d time,,,12,12 -w 31,28,31,30,31,30,31,31,30,31,30,31 tmp1_$var.nc -o tmp_$var.nc
+
+               filelist=()
+               for im in `seq 0 11`; do
+                   ncflint --fix_rec_crd -h -O -d time,$im,,12 -w ${dpm[$im]},0.0 tmp1_$var.nc tmp1_$var.nc -o tmp${im}_tmp1_$var.nc
+                   filelist+=(tmp${im}_tmp1_$var.nc)
+               done
+
+               # filelist contains multi-year files with different month, so the time record should be always same and it should be safe to use nces
+
+
+               #-ncrcat -h -O ${filelist[*]} -o tmp1_$var.nc
+               #-/bin/rm -f tmp*_tmp1_$var.nc
+                   #-ncra -O --mro -d time,,,12,12 tmp1_$var.nc -o tmp_$var.nc
+               nces -h -O ${filelist[*]} -o tmp_$var.nc
+               ncap2 -O -v -s "${method}_${var}=${method}_${var}*12*$asca+$afac" tmp_$var.nc GBL_${method}_${modnam}_${name}
+               /bin/rm -f tmp*_tmp1_$var.nc
+           else
+               echo "Invalid method for annual operation $method"; exit -1;
+           fi
+           /bin/rm -f tmp_$var.nc tmp1_$var.nc
 
         else  # raw model outputs
            #should be contained

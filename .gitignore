@@ -1,7 +1,10 @@
 *.nc
 *.ps
+*.png
 fig.md
 figs/
 genmd.py
 ls3mip-elm/
+1pctco2
+ncclimo.lnd
 
